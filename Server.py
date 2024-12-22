@@ -8,6 +8,9 @@ MAX_RECEIVE = 1024
 
 class Server:
     def __init__(self):
+        self.users = {"sarunas" : "xd"}
+        self.authenticated_users = {"sarunas" : False}
+
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((HOST, PORT))
@@ -24,7 +27,7 @@ class Server:
             while True:
                 client_connection, client_address = self.secure_server_socket.accept()
                 print(f"Connected to {client_address}")
-                threading.Thread(target=self.handleRequest, args=(client_connection,client_address,)).start()
+                threading.Thread(target=self.userAuthentication, args=(client_connection, client_address,)).start()
         except KeyboardInterrupt as e:
             print("Shutting down Server")
         finally:
@@ -50,6 +53,18 @@ class Server:
         except Exception as e:
             print(f"{e}")
         finally:
+            client_connection.close()
+
+    def userAuthentication(self, client_connection, client_address):
+        received_login = client_connection.recv(MAX_RECEIVE).decode()
+        username = received_login.split(" ")[0]
+        password = received_login.split(" ")[1]
+
+        if username in self.users and self.users[username] == password:
+            client_connection.send("OK".encode())
+            self.handleRequest(client_connection, client_address)
+        else:
+            client_connection.send("BAD".encode())
             client_connection.close()
 
 
