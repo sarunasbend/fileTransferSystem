@@ -1,24 +1,29 @@
 import socket
-from cryptography.fernet import Fernet
+import ssl
+
 MAX_RECEIVE = 1024
 
 class Client:
-    def __init__(self, key=None):
+    def __init__(self):
         try:
-            self.cipher_suite = Fernet(key)
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect(('localhost', 12345))
+
+            self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            self.context.load_verify_locations('server.crt')
+
+            self.secure_client_socket = self.context.wrap_socket(self.client_socket, server_hostname='localhost')
+            self.secure_client_socket.connect(('localhost', 12345))
 
             file_request = "basic.txt"
-            self.client_socket.send(self.cipher_suite.encrypt(file_request.encode("utf-8")))
+            self.secure_client_socket.sendall(file_request.encode())
 
             try:
                 with open('download.txt', 'wb') as file:
                     while True:
-                        data = self.client_socket.recv(MAX_RECEIVE)
+                        data = self.secure_client_socket.recv(MAX_RECEIVE)
                         if not data:
                             break
-                        file.write(self.cipher_suite.decrypt(data.decode("utf-8")))
+                        file.write(data)
             except FileExistsError as e:
                 print(f"{e}")
         except ConnectionRefusedError as e:
@@ -29,8 +34,8 @@ class Client:
             print(f"{e}")
         finally:
             print("File has been received.")
+            self.secure_client_socket.close()
             self.client_socket.close()
 
 if __name__ == "__main__":
-    key = input("Enter the encryption key:").encode()
-    Client(key=key)
+    Client()
