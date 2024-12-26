@@ -104,8 +104,30 @@ class Client:
         except Exception as e:
             print(f"{e}")
         try:
-            files = self.secure_client_socket.recv(MAX_RECEIVE).decode()
-            print(files)
+            files_received = self.secure_client_socket.recv(MAX_RECEIVE).decode()
+            separate_files = files_received.split("\n")[0:-1]
+            files_received = files_received.split("\n")
+
+            parsed_files_received = []
+
+            for file in separate_files:
+                file = file.split(" ")
+                parsed_files_received.append(file[0])
+                parsed_files_received.append(file[1])
+                parsed_files_received.append(time.ctime(float(file[2])))
+
+
+            padding = files_received[-1].split(" ")
+
+            print(" File Name " + ((int(padding[0]) - 11) * " ") + " Size " + (int(padding[1]) - 6) * " "  + " Last Accessed " + ((int(padding[2]) - 15)) * " ")
+            print("=" * (int(padding[0]) + int(padding[1]) + int(padding[2])))
+
+            for x in range(0, len(parsed_files_received), 3):
+                file_padding = int(padding[0]) - len(parsed_files_received[x])
+                size_padding = int(padding[1]) - len(parsed_files_received[x + 1])
+                last_padding = int(padding[2]) - len(parsed_files_received[x + 2])
+                print(" " + parsed_files_received[x] + (file_padding * " ") + " " + parsed_files_received[x + 1] + (size_padding * " ") + parsed_files_received[x + 2] + (last_padding * " "))
+
         except Exception as e:
             print(f"{e}")
 

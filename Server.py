@@ -10,6 +10,7 @@ UPLOAD = 6
 
 class Server:
     def __init__(self):
+        # files that I want to exclude the client seeing
         self.excludedFiles = ['Client.py', '.idea', 'Server.py', '.git', '.gitignore', 'server.crt', 'README.md', 'server.key']
 
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,7 +30,6 @@ class Server:
                 client_connection, client_address = self.secure_server_socket.accept()
                 print(f"Connected to {client_address}")
                 threading.Thread(target=self.handleRequest, args=(client_connection, client_address,)).start()
-            print("finished")
         except KeyboardInterrupt as e:
             print("Shutting down Server")
         finally:
@@ -57,19 +57,21 @@ class Server:
         finally:
             client_connection.close()
 
+    # constantly waits to accept more requests from the client
     def handleRequest(self, client_connection, client_address):
         try:
-            request = client_connection.recv(MAX_RECEIVE).decode()
-            if request.split(" ")[0] == "upload":
-                filename = request.split(" ")[1] + "2"
-                filedata = request[UPLOAD + len(filename) + 1:]
-                self.upload(filename, filedata)
-            elif request.split(" ")[0] == "delete":
-                pass
-            elif request.split(" ")[0] == "download":
-                pass
-            elif request == "see":
-                self.see(client_connection)
+            while True:
+                request = client_connection.recv(MAX_RECEIVE).decode()
+                if request.split(" ")[0] == "upload":
+                    filename = request.split(" ")[1] + "2"
+                    filedata = request[UPLOAD + len(filename) + 1:]
+                    self.upload(filename, filedata)
+                elif request.split(" ")[0] == "delete":
+                    pass
+                elif request.split(" ")[0] == "download":
+                    pass
+                elif request == "see":
+                    self.see(client_connection)
         except Exception as e:
             print(f"{e}")
 
@@ -91,23 +93,41 @@ class Server:
     def download(self, filename):
         pass
 
+    # sends the client all the available files on the server
     def see(self, client_connection):
         try:
             filesStored = os.listdir()
             for file in self.excludedFiles:
                 filesStored.remove(file)
 
-            data = ""
+            size_of_files = []
+            last_modified = []
+            creation_date = []
+
             for file in filesStored:
-                data += file + " "
-            print(data)
+                size_of_files.append(os.path.getsize(file))
+                last_modified.append(os.path.getmtime(file))
+                # creation_date.append(time.ctime(os.path.getctime(file)))
+
+            sending_data = ""
+            file_padding = 11
+            size_padding = 6
+            last_padding = 15
+
+            for x in range(0, len(filesStored)):
+                sending_data += filesStored[x] + " " + str(size_of_files[x]) + " " + str(last_modified[x])  + "\n"
+                if len(filesStored[x]) > file_padding: file_padding = len(filesStored[x])
+                if len(str(size_of_files[x])) > file_padding: file_padding = len(str(size_of_files[x]))
+                if len(str(last_modified[x])) > file_padding: file_padding = len(str(last_modified[x]))
+
+            sending_data += str(file_padding) + " " + str(size_padding) + " " + str(last_padding)
+
             try:
-                client_connection.sendall(data.encode())
+                client_connection.sendall(sending_data.encode())
             except Exception as e:
                 pass
         except OSError as e:
             print(f"{e}")
-
 
 if __name__ == "__main__":
     Server()
