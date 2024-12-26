@@ -1,5 +1,6 @@
 import socket
 import ssl
+import time
 
 MAX_RECEIVE = 1024
 
@@ -58,11 +59,12 @@ class Client:
             while True:
                 try:
                     with open(filename, 'r') as file:
-                        # data = "upload " + filename + " "
-                        data = b""
-                        for data_chunk in data:
-                            data += data_chunk
-                        self.secure_client_socket.sendall(data)
+                        data = "upload " + filename + " "
+                        line = file.readline()
+                        while line:
+                            data += line
+                            line = file.readline()
+                        self.secure_client_socket.sendall(data.encode())
                         break
                 except FileNotFoundError:
                     print("File not Found")
@@ -93,7 +95,19 @@ class Client:
             self.secure_client_socket.close()
             self.client_socket.close()
 
+    def deleteFile(self):
+        pass
 
+    def see(self):
+        try:
+            self.secure_client_socket.sendall("see".encode())
+        except Exception as e:
+            print(f"{e}")
+        try:
+            files = self.secure_client_socket.recv(MAX_RECEIVE).decode()
+            print(files)
+        except Exception as e:
+            print(f"{e}")
 
 if __name__ == "__main__":
     startup()
@@ -101,18 +115,19 @@ if __name__ == "__main__":
     client = None
     connected = False
     while True:
-        userInput = input()
+        userInput = input("$ ")
         if userInput == "connect" and connected == False:
             client = Client()
             connected = True
         elif userInput == "disconnect" and connected == True:
             client.closeClient()
+            connected = False
         elif userInput.split(" ")[0] == "upload":
             client.uploadFile(userInput.split(" ")[1])
         elif userInput.split(" ")[0] == "delete":
             print("deleting")
         elif userInput == "see":
-            print("seeing")
+            client.see()
         elif userInput == "exit":
             break
         elif userInput == "help":

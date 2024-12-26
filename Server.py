@@ -1,13 +1,16 @@
 import socket
 import threading
 import ssl
+import os
 
 HOST = '0.0.0.0'
 PORT = 12345
 MAX_RECEIVE = 1024
+UPLOAD = 6
 
 class Server:
     def __init__(self):
+        self.excludedFiles = ['Client.py', '.idea', 'Server.py', '.git', '.gitignore', 'server.crt', 'README.md', 'server.key']
 
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -26,6 +29,7 @@ class Server:
                 client_connection, client_address = self.secure_server_socket.accept()
                 print(f"Connected to {client_address}")
                 threading.Thread(target=self.handleRequest, args=(client_connection, client_address,)).start()
+            print("finished")
         except KeyboardInterrupt as e:
             print("Shutting down Server")
         finally:
@@ -56,17 +60,16 @@ class Server:
     def handleRequest(self, client_connection, client_address):
         try:
             request = client_connection.recv(MAX_RECEIVE).decode()
-            print(request)
             if request.split(" ")[0] == "upload":
                 filename = request.split(" ")[1] + "2"
-                filedata = request.split(" ")[2]
+                filedata = request[UPLOAD + len(filename) + 1:]
                 self.upload(filename, filedata)
             elif request.split(" ")[0] == "delete":
                 pass
             elif request.split(" ")[0] == "download":
                 pass
             elif request == "see":
-                pass
+                self.see(client_connection)
         except Exception as e:
             print(f"{e}")
 
@@ -81,6 +84,30 @@ class Server:
             print(f"{e}")
         except Exception as e:
             print(f"{e}")
+
+    def delete(self, filename):
+        pass
+
+    def download(self, filename):
+        pass
+
+    def see(self, client_connection):
+        try:
+            filesStored = os.listdir()
+            for file in self.excludedFiles:
+                filesStored.remove(file)
+
+            data = ""
+            for file in filesStored:
+                data += file + " "
+            print(data)
+            try:
+                client_connection.sendall(data.encode())
+            except Exception as e:
+                pass
+        except OSError as e:
+            print(f"{e}")
+
 
 if __name__ == "__main__":
     Server()
