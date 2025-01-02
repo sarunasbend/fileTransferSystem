@@ -71,15 +71,18 @@ class Client:
         except Exception as e:
             print(f"{e}")
 
-    def downloadFile(self):
+    def downloadFile(self, fileRequest, fileName):
         try:
-            file_request = input("Enter Filename: ")
-            self.secure_client_socket.sendall(file_request.encode())
+            fileRequest = "download " + fileRequest
+            self.secure_client_socket.sendall(fileRequest.encode())
             try:
-                with open(file_request, 'wb') as file:
+                data = self.secure_client_socket.recv(MAX_RECEIVE).decode()
+                if data != "okay":
+                    raise FileNotFoundError
+                with open(fileName, 'wb') as file:
                     while True:
                         data = self.secure_client_socket.recv(MAX_RECEIVE)
-                        if not data:
+                        if data.decode() == "EOF":
                             break
                         file.write(data)
             except FileExistsError as e:
@@ -90,10 +93,6 @@ class Client:
             print(f"{e}")
         except Exception as e:
             print(f"{e}")
-        finally:
-            print("File has been received.")
-            self.secure_client_socket.close()
-            self.client_socket.close()
 
     def deleteFile(self):
         pass
@@ -138,14 +137,26 @@ if __name__ == "__main__":
     connected = False
     while True:
         userInput = input("$ ")
+        # user must connect to the server before making requests
         if userInput == "connect" and connected == False:
             client = Client()
             connected = True
+        # will dc the user from the server, requiring them to connect again
         elif userInput == "disconnect" and connected == True:
             client.closeClient()
             connected = False
+        # user can upload the file to the server
         elif userInput.split(" ")[0] == "upload":
             client.uploadFile(userInput.split(" ")[1])
+        # user can download the file from the server, needs to specify the name of the file from server
+        # additional parameter can be added to the command to specify a new name for file on client machine
+        elif userInput.split(" ")[0] == "download":
+            if len(userInput.split(" ")) == 3:
+                client.downloadFile(userInput.split(" ")[1], userInput.split(" ")[2])
+            elif len(userInput.split(" ")) == 2:
+                client.downloadFile(userInput.split(" ")[1], userInput.split(" ")[1])
+            else:
+                print("invalid command")
         elif userInput.split(" ")[0] == "delete":
             print("deleting")
         elif userInput == "see":

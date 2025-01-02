@@ -2,6 +2,7 @@ import socket
 import threading
 import ssl
 import os
+import time
 
 HOST = '0.0.0.0'
 PORT = 12345
@@ -32,6 +33,8 @@ class Server:
                 threading.Thread(target=self.handleRequest, args=(client_connection, client_address,)).start()
         except KeyboardInterrupt as e:
             print("Shutting down Server")
+            self.secure_server_socket.close()
+            self.server_socket.close()
         finally:
             self.secure_server_socket.close()
             self.server_socket.close()
@@ -63,17 +66,20 @@ class Server:
             while True:
                 request = client_connection.recv(MAX_RECEIVE).decode()
                 if request.split(" ")[0] == "upload":
-                    filename = request.split(" ")[1] + "2"
+                    filename = request.split(" ")[1]
                     filedata = request[UPLOAD + len(filename) + 1:]
                     self.upload(filename, filedata)
                 elif request.split(" ")[0] == "delete":
                     pass
                 elif request.split(" ")[0] == "download":
-                    pass
+                    filename = request.split(" ")[1]
+                    self.download(filename, client_connection)
                 elif request == "see":
                     self.see(client_connection)
         except Exception as e:
             print(f"{e}")
+        finally:
+            client_connection.close()
 
     def upload(self, filename, data=None):
         try:
@@ -90,8 +96,24 @@ class Server:
     def delete(self, filename):
         pass
 
-    def download(self, filename):
-        pass
+    def download(self, filename, client_connection):
+        try:
+            while True:
+                try:
+                    with open(filename, 'rb') as file:
+                        client_connection.sendall("okay".encode())
+                        data = b""
+                        for data_chunk in file:
+                            data += data_chunk
+                        client_connection.sendall(data)
+                        client_connection.sendall("EOF".encode())
+                        break
+                except FileNotFoundError:
+                    print(b"File not Found.")
+                    client_connection.sendall("File not Found".encode())
+                    break
+        except Exception as e:
+            print(f"{e}")
 
     # sends the client all the available files on the server
     def see(self, client_connection):
