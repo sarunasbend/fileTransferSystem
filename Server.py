@@ -39,27 +39,6 @@ class Server:
             self.secure_server_socket.close()
             self.server_socket.close()
 
-    def handleRequest2(self, client_connection, client_address):
-        try:
-            file_request = client_connection.recv(MAX_RECEIVE).decode()
-            print(f"Message from {client_address}: {file_request}")
-            while True:
-                try:
-                    with open(file_request, 'rb') as file:
-                        data = b""
-                        for data_chunk in file:
-                            data += data_chunk
-                        client_connection.sendall(data)
-                        break
-                except FileNotFoundError:
-                    print(b"File not Found.")
-                    client_connection.sendall("File not Found".encode())
-                    break
-        except Exception as e:
-            print(f"{e}")
-        finally:
-            client_connection.close()
-
     # constantly waits to accept more requests from the client
     def handleRequest(self, client_connection, client_address):
         try:
@@ -70,7 +49,8 @@ class Server:
                     filedata = request[UPLOAD + len(filename) + 1:]
                     self.upload(filename, filedata)
                 elif request.split(" ")[0] == "delete":
-                    pass
+                    filename = request.split(" ")[1]
+                    self.delete(filename)
                 elif request.split(" ")[0] == "download":
                     filename = request.split(" ")[1]
                     self.download(filename, client_connection)
@@ -94,7 +74,14 @@ class Server:
             print(f"{e}")
 
     def delete(self, filename):
-        pass
+        try:
+            if filename not in self.excludedFiles:
+                if os.path.exists(filename):
+                    os.remove(filename)
+                else:
+                    raise FileNotFoundError
+        except FileNotFoundError as e:
+            print(f"{e}")
 
     def download(self, filename, client_connection):
         try:
@@ -147,7 +134,7 @@ class Server:
             try:
                 client_connection.sendall(sending_data.encode())
             except Exception as e:
-                pass
+                print(f"{e}")
         except OSError as e:
             print(f"{e}")
 

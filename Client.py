@@ -68,6 +68,7 @@ class Client:
                         break
                 except FileNotFoundError:
                     print("File not Found")
+                    break;
         except Exception as e:
             print(f"{e}")
 
@@ -94,8 +95,9 @@ class Client:
         except Exception as e:
             print(f"{e}")
 
-    def deleteFile(self):
-        pass
+    def deleteFile(self, filename):
+        request = "delete " + filename
+        self.secure_client_socket.sendall(request.encode())
 
     def see(self):
         try:
@@ -158,7 +160,8 @@ if __name__ == "__main__":
             else:
                 print("invalid command")
         elif userInput.split(" ")[0] == "delete":
-            print("deleting")
+            if len(userInput.split(" ")) == 2:
+                client.deleteFile(userInput.split(" ")[1])
         elif userInput == "see":
             client.see()
         elif userInput == "exit":
